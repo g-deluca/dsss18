@@ -1,0 +1,6 @@
+DeepSEA language: 
+- a program is a set of objects [..]
+- programs are translated into Coq, whose functions are written a monad state
+- for each input, the compiler generates a Coq Callina program
+  then we make a proof of compiler correctness into some EVM assembly
+

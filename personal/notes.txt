@@ -1,0 +1,7 @@
+- relation between fold and induction
+- why Coq can't have free variables in top level declarations
+- difference between Prop and Type: is it only because one represents
+  things that we will care about their computation?
+- Per Martin-Lof: intuitionistic type theory
+- Read Black Trees vs ABL Trees: RBT allows a top down _(balancing) 
+  which is better for concurrency
