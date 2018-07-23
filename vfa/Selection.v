@@ -125,9 +125,27 @@ Proof.
   method, along with the theorem [contents_perm].  If you do,
   you'll still leave the statement of this theorem unchanged. *)
 
-intros x l; revert x.
+intros x l. revert x.
 induction l; intros; simpl in *.
-(* FILL IN HERE *) Admitted.
+apply Permutation_refl.
+bdestruct (x <=? a).
+- destruct (select x l) eqn:?H. 
+  eapply perm_trans.
+  apply perm_swap.
+  eapply perm_trans.
+  2: eapply perm_swap.
+  apply perm_skip.
+  specialize (IHl x).
+  rewrite H0 in IHl.
+  auto.
+- destruct (select a l) eqn:?H. 
+  eapply perm_trans.
+  2: apply perm_swap.
+  apply perm_skip.
+  specialize (IHl a).
+  rewrite H0 in IHl.
+  auto.
+Qed.
 (** [] *)
 
 (** **** Exercise: 3 stars (selection_sort_perm)  *)
@@ -135,7 +153,18 @@ Lemma selsort_perm:
   forall n,
   forall l, length l = n -> Permutation l (selsort l n).
 Proof.
-
+  intros.
+  revert l H. induction n; simpl; intros; destruct l; inv H.
+  apply perm_nil.
+  destruct (select n0 l) eqn:?H.
+  assert (H0 := select_perm n0 l).
+  rewrite H in H0.
+  eapply perm_trans; try eassumption. 
+  apply perm_skip.
+  apply IHn. apply Permutation_length.
+  inv H0. 
+  + apply Permutation_sym. assumption.
+  + simpl in H.
 (** NOTE: If you wish, you may [Require Import Multiset] and use the  multiset
   method, along with the theorem [same_contents_iff_perm]. *)
 
@@ -154,6 +183,12 @@ Lemma select_smallest_aux:
     select x al = (y,bl) ->
     y <= x.
 Proof.
+  intros.
+  assert (Forall (fun z : nat => y <= z) (y::bl)).
+    constructor. auto. assumption.
+  assert (H2 := select_perm x al).
+  rewrite H0 in H2. apply Permutation_sym in H2.
+  assert (H3 := @Forall_perm _ _ _ _ H2 H1).
 (* Hint: no induction needed in this lemma.
    Just use existing lemmas about select, along with [Forall_perm] *)
 (* FILL IN HERE *) Admitted.

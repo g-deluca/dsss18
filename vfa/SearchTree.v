@@ -277,8 +277,8 @@ Definition example_tree (v2 v4 v5 : V) :=
   you think example_tree should correspond to.  Use
   [t_update] and [(t_empty default)]. *)
 
-Definition example_map (v2 v4 v5: V) : total_map V
-  (* REPLACE THIS LINE WITH ":= _your_definition_ ." *). Admitted.
+Definition example_map (v2 v4 v5: V) : total_map V :=
+  t_update (t_update (t_update (t_empty default) 2 v2) 4 v4) 5 v5.
 (** [] *)
 
 (** To build the [Abs] relation, we'll use these two auxiliary
@@ -311,6 +311,25 @@ evar (m: total_map V).
 replace (example_map v2 v4 v5) with m; subst m.
 repeat constructor.
 extensionality x.
+unfold example_map, t_update, combine, t_empty.
+
+bdestruct (4 =? x). bdestruct (5 =? x).
+omega. reflexivity.
+
+bdestruct (x <? 4). bdestruct  (2=? x). bdestruct (5 =? x).
+omega. reflexivity.
+
+bdestruct (x <? 2). bdestruct (5 =? x).
+omega. reflexivity.
+
+bdestruct (5 =? x). omega. reflexivity.
+
+bdestruct (5 =? x). reflexivity.
+
+bdestruct (2 =? x). omega.
+bdestruct (x <? 5); reflexivity.
+Qed.
+
 (* HINT:
   First,    [unfold example_map, t_update, combine, t_empty, beq_id.]
   Then, repeat the following procedure:  If you see something like
@@ -319,7 +338,6 @@ extensionality x.
   If you're too lazy to check for yourself whether they are true,
    use [bdestruct (4 =? x); try omega].
 *)
-(* FILL IN HERE *) Admitted.
 (** [] *)
 
 (** You can ignore this lemma, unless it fails. *)
@@ -348,7 +366,13 @@ Theorem lookup_relate:
   forall k t cts ,
     Abs t cts -> lookup k t =  cts k.
 Proof.
-(* FILL IN HERE *) Admitted.
+  intros k t cts H.
+  induction H.
+  + simpl. unfold t_empty. reflexivity.
+  + unfold t_update, combine. simpl.
+    bdestruct (k <? k0); bdestruct (k0 <? k); bdestruct (k0 =? k);
+      try omega; try intuition.
+Qed.
 (** [] *)
 
 (** **** Exercise: 4 stars (insert_relate)  *)
@@ -357,7 +381,40 @@ Theorem insert_relate:
     Abs t cts ->
     Abs (insert k v t) (t_update cts k v).
 Proof.
-(* FILL IN HERE *) Admitted.
+  intros k v t cts H. induction H.
+  - simpl.
+    (* #### Gil robado *)
+    evar (m: total_map V).
+    replace (t_update (t_empty default) k v) with m; subst m.
+    repeat constructor. extensionality x.
+    (* ############### *)
+    unfold t_update, t_empty. bdestruct (k =? x).
+    reflexivity. unfold combine. destruct (x <? k); reflexivity.
+  - simpl. bdestruct (k <? k0).
+    + evar (m: total_map V).
+      replace (t_update (t_update (combine k0 a b) k0 v0) k v)
+        with m; subst m.
+      repeat constructor.
+      apply IHAbs1. apply H0.
+
+      (* This might be a separate lemma *)
+      unfold t_update, combine. extensionality x.
+      bdestruct (k0 =? x); bdestruct (k =? x); bdestruct (x <? k0);
+        try omega; try intuition.
+
+    + bdestruct (k0 <? k).
+      * evar (m: total_map V).
+        replace (t_update (t_update (combine k0 a b) k0 v0) k v)
+          with m; subst m.
+        repeat constructor. apply H. apply IHAbs2.
+        
+      unfold t_update, combine. extensionality x.
+      bdestruct (k0 =? x); bdestruct (k =? x); bdestruct (x <? k0);
+        try omega; try intuition.
+
+      * assert (k = k0) by omega. subst.
+        rewrite t_update_shadow. constructor; assumption.
+Qed.
 (** [] *)
 
 (* ################################################################# *)
@@ -411,6 +468,26 @@ pose (m' := t_update
            (t_empty default)) 2 v).
 assert (Paradox: list2map (elements bogus) = m /\ list2map (elements bogus) <> m).
 split.
+- assert (m = m').
+  + extensionality x. unfold m, m'. unfold t_update, combine, t_empty.
+    bdestruct (2 =? x); [reflexivity | ].
+    bdestruct (x <? 2); [ | reflexivity].
+    bdestruct (3 =? x); [omega | ]. 
+    bdestruct (x <? 3); reflexivity.
+  + rewrite H1. apply H0. unfold bogus, m'.
+    repeat constructor.
+-  unfold not. intros.
+   assert ((list2map (elements bogus))  3 <> m 3).
+   + unfold not. intros. contradiction.
+
+(* This is the extended way...
+     unfold bogus, m in H2. simpl in H2.
+     unfold t_update in H2. simpl in H2.
+     unfold t_empty in H2. apply H. apply H2. *)
+
+   + rewrite H1 in H2. contradiction.
+- destruct Paradox. contradiction.
+Qed.
 (** To prove the first subgoal, prove that [m=m'] (by [extensionality]) and
       then use [H].
 
@@ -424,8 +501,6 @@ split.
 
       In all 3 goals, when you need to unfold local definitions such
       as [bogus] you can use [unfold bogus] or [subst bogus].  *)
-
-(* FILL IN HERE *) Admitted.
 (** [] *)
 
 (** What went wrong?  Clearly, [elements_relate] is true; you just
@@ -538,7 +613,13 @@ Proof.
 extensionality s.
 unfold elements.
 assert (forall base, elements' s base = slow_elements s ++ base).
-(* FILL IN HERE *) Admitted.
+- induction s.
+  + simpl. reflexivity.
+  + simpl. intros base. rewrite <- app_assoc.
+    simpl. rewrite (IHs2 base). 
+    apply IHs1.
+- rewrite <- app_nil_r. apply (H []).
+Qed.
 (** [] *)
 
 
@@ -651,7 +732,18 @@ unfold combine, t_update.
 bdestruct (k=?i); [ omega | ].
 bdestruct (i<?k); [ | omega].
 auto.
-(* FILL IN HERE *) Admitted.
+
+rewrite list2map_app_right by auto.
+simpl. unfold t_update.
+bdestruct (k =? i); [ reflexivity | ].
+unfold combine.
+
+bdestruct (i <? k); [| reflexivity].
+destruct (In_decidable (slow_elements r) i) as [[w' J] | Jleft].
+pose proof (slow_elements_range _ _ _ _ _ H0_0 J). omega.
+
+repeat rewrite list2map_not_in_default; intuition.
+Qed.
 (** [] *)
 
 (* ################################################################# *)
@@ -667,10 +759,14 @@ auto.
 (** **** Exercise: 1 star (empty_tree_SearchTree)  *)
 Theorem empty_tree_SearchTree:  SearchTree empty_tree.
 Proof.
-clear default.  (* This is here to avoid a nasty interaction between Admitted
+(* This is here to avoid a nasty interaction between Admitted
    and Section/Variable.  It's also a hint that the [default] value
    is not needed in this theorem. *)
-(* FILL IN HERE *) Admitted.
+  clear default. eapply ST_intro.
+  repeat econstructor. 
+Qed.
+
+
 (** [] *)
 
 (** **** Exercise: 3 stars (insert_SearchTree)  *)
@@ -679,6 +775,15 @@ Theorem insert_SearchTree:
    SearchTree t -> SearchTree (insert k v t).
 Proof.
 clear default. (* This is here to avoid a nasty interaction between Admitted and Section/Variable *)
+intros k v t H.
+inv H. induction H0.
+- repeat econstructor. apply le_0_n.
+- simpl. bdestruct (k <? k0).
+  + repeat econstructor; inv IHSearchTree'1; inv IHSearchTree'2.
+    * inv H0.
+      constructor. omega.
+      constructor. assumption. inversion H5. constructor. 
+
 (* FILL IN HERE *) Admitted.
 (** [] *)
 

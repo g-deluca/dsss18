@@ -530,8 +530,12 @@ Check app_assoc.
 Example permut_example: forall (a b: list nat),
   Permutation (5::6::a++b) ((5::b)++(6::a++[])).
 Proof.
- (* After you cancel the [5], then bring the [6] to the front... *)
-(* FILL IN HERE *) Admitted.
+  intros a b. rewrite app_nil_r.
+  simpl. apply perm_skip. 
+  eapply perm_trans.      
+  2: apply Permutation_app_comm.
+  simpl. apply Permutation_refl.
+Qed.
 (** [] *)
 
 (** **** Exercise: 1 star (not_a_permutation)  *)
@@ -544,7 +548,11 @@ Check Permutation_length_1_inv.
 Example not_a_permutation:
   ~ Permutation [1;1] [1;2].
 Proof.
-(* FILL IN HERE *) Admitted.
+  unfold not. intros H.
+  apply Permutation_cons_inv in H.
+  apply Permutation_length_1_inv in H.
+  inversion H.
+Qed.
 (** [] *)
 
 (** Back to [maybe_swap].  We prove that it doesn't lose or gain
@@ -616,7 +624,14 @@ Theorem Forall_perm: forall {A} (f: A -> Prop) al bl,
   Permutation al bl ->
   Forall f al -> Forall f bl.
 Proof.
-(* FILL IN HERE *) Admitted.
+  intros. induction H. 
+  - assumption.
+  - constructor.
+    + inv H0. assumption.
+    + apply IHPermutation. inv H0. assumption.
+  - inv H0. inv H3. repeat constructor;try assumption.
+  - apply IHPermutation2. apply IHPermutation1. assumption.
+Qed.
 (** [] *)
 
 (** $Date$ *)
