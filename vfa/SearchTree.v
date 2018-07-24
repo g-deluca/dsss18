@@ -769,6 +769,15 @@ Qed.
 
 (** [] *)
 
+Lemma weakining_lo : forall t lo hi,
+  SearchTree' lo t hi -> SearchTree' 0 t hi.
+Proof.
+induction t; intros lo hi H; [constructor; apply le_0_n | ].
+inv H. constructor.
+eapply IHt1. apply H6.
+apply H7.
+Qed.
+
 (** **** Exercise: 3 stars (insert_SearchTree)  *)
 Theorem insert_SearchTree:
   forall k v t,
@@ -776,15 +785,27 @@ Theorem insert_SearchTree:
 Proof.
 clear default. (* This is here to avoid a nasty interaction between Admitted and Section/Variable *)
 intros k v t H.
-inv H. induction H0.
-- repeat econstructor. apply le_0_n.
-- simpl. bdestruct (k <? k0).
-  + repeat econstructor; inv IHSearchTree'1; inv IHSearchTree'2.
-    * inv H0.
-      constructor. omega.
-      constructor. assumption. inversion H5. constructor. 
-
-(* FILL IN HERE *) Admitted.
+(* ##### Gil robado *)
+inv H. remember 0 as lo in H0.
+clear - H0.
+(* ###############  *)
+revert hi lo H0. induction t.
+- intros hi lo H. repeat econstructor. apply le_0_n.
+- intros h1 lo H. simpl. bdestruct (k <? k0).
+  inv H. 
+  + repeat econstructor.
+    * admit.
+    * apply H8.
+  + bdestruct (k0 <? k); inv H.
+    * repeat econstructor. eapply weakining_lo. eassumption.
+      apply IHt2 in H9. inv H9. admit.
+    * repeat econstructor. eapply weakining_lo. 
+      assert (k = k0) by omega. rewrite H. eassumption.
+      
+      assert (k = k0) by omega. rewrite H. eassumption.
+(* WTF is this *)
+Unshelve. assumption.
+Admitted.
 (** [] *)
 
 (* ################################################################# *)
