@@ -6,9 +6,9 @@ Import SockAddr.
 Definition zeroize_addr_spec :=
   DECLARE _zeroize_addr
   WITH ptr : val
-  PRE [ 1%positive OF tptr (Tstruct _sockaddr_in noattr) ]
+  PRE [ _addr OF tptr (Tstruct _sockaddr_in noattr) ]
     PROP ( ) 
-    LOCAL ( temp 1%positive ptr )
+    LOCAL ( temp _addr ptr )
     SEP ( data_at_ Tsh (Tstruct _sockaddr_in noattr) ptr )
   POST [ tvoid ]
     PROP ( )

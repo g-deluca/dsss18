@@ -116,13 +116,13 @@ Module TracePred.
 
   Import TraceIncl.
 
-  Definition SocketMonad := M SocketE.
+  Definition SocketM := M socketE.
 
-  Definition ITREE {T} (t : SocketMonad T) :=
-    EX t' : SocketMonad T, !!(trace_incl t t') && has_ext t'.
+  Definition ITREE {T} (t : SocketM T) :=
+    EX t' : SocketM T, !!(trace_incl t t') && has_ext t'.
 
   Lemma trace_pred_incl:
-    forall {T : Type} (t1 t2 : SocketMonad T),
+    forall {T : Type} (t1 t2 : SocketM T),
       trace_incl t2 t1 ->
       ITREE t1 |-- ITREE t2.
   Proof.
@@ -135,7 +135,7 @@ Module TracePred.
   Qed.    
   
   Lemma trace_pred_eq:
-    forall {T : Type} (t1 t2 : SocketMonad T),
+    forall {T : Type} (t1 t2 : SocketM T),
       trace_eq t1 t2 ->
       ITREE t1 = ITREE t2.
   Proof.
@@ -147,7 +147,7 @@ Module TracePred.
   (* Interface *)
   
   Lemma internal_nondet1: 
-    forall {T1 T2 : Type} (k1 k2 : SocketMonad T1) (k3 : T1 -> SocketMonad T2),
+    forall {T1 T2 : Type} (k1 k2 : SocketM T1) (k3 : T1 -> SocketM T2),
       ITREE (r <- or k1 k2 ;; k3 r) |--
       ITREE (r <- k1 ;; k3 r).
   Proof.
@@ -156,7 +156,7 @@ Module TracePred.
   Qed.
 
   Lemma internal_nondet2:
-    forall {T1 T2 : Type} (k1 k2 : SocketMonad T1) (k3 : T1 -> SocketMonad T2),
+    forall {T1 T2 : Type} (k1 k2 : SocketM T1) (k3 : T1 -> SocketM T2),
       ITREE (r <- or k1 k2 ;; k3 r) |--
       ITREE (r <- k2 ;; k3 r).
   Proof.
@@ -165,7 +165,7 @@ Module TracePred.
   Qed.
     
   Lemma internal_nondet3:
-    forall {T1 T2 : Type} (k : T1 -> SocketMonad T2) (xs : list T1) (x : T1),
+    forall {T1 T2 : Type} (k : T1 -> SocketM T2) (xs : list T1) (x : T1),
       In x xs ->
       ITREE (r <- choose xs ;; k r) |--
       ITREE (k x).
@@ -177,7 +177,7 @@ Module TracePred.
   Qed.
 
   Lemma trace_bind_ret :
-    forall {A B} a (f : A -> SocketMonad B),
+    forall {A B} a (f : A -> SocketM B),
       ITREE (r <- ret a ;; f r) = ITREE (f a).
   Proof.
     intros.
@@ -188,8 +188,8 @@ Module TracePred.
   Qed.
   
   Lemma trace_bind_assoc:
-    forall {A B C : Type} (m : SocketMonad A) (f : A -> SocketMonad B)
-      (g : B -> SocketMonad C),
+    forall {A B C : Type} (m : SocketM A) (f : A -> SocketM B)
+      (g : B -> SocketM C),
       ITREE ( b <- (a <- m ;; f a) ;; g b ) =
       ITREE ( a <- m ;; b <- f a ;; g b ).
   Proof.
@@ -201,7 +201,7 @@ Module TracePred.
   Qed.
   
   Lemma trace_drop_tau:
-    forall (T : Type) (k : SocketMonad T), 
+    forall (T : Type) (k : SocketM T), 
       ITREE (Tau k) = ITREE k.
   Proof.
     intros.
@@ -212,7 +212,7 @@ Module TracePred.
   Qed.
   
   Lemma trace_bind_cancel:
-    forall {A B : Type} (m : SocketMonad A) (f g : SocketMonad B),
+    forall {A B : Type} (m : SocketM A) (f g : SocketM B),
       EquivUpToTau f g ->
       ITREE ( m ;; f ) = ITREE ( m ;; g ).
   Proof.
@@ -367,8 +367,8 @@ Definition socket_spec :=
 (* shutdown never fails for now *)
 Definition shutdown_spec (T : Type) :=
   DECLARE _shutdown
-  WITH t: SocketMonad T,
-       k: SocketMonad T,
+  WITH t: SocketM T,
+       k: SocketM T,
        client_conn : connection_id,
        st: SocketMap,
        fd: sockfd
@@ -439,12 +439,15 @@ Definition bind_spec :=
            consistent_world st'
          )
     LOCAL ( temp ret_temp (Vint (Int.repr r)) )
-    SEP ( SOCKAPI st' ).
+    SEP ( SOCKAPI st' ;
+            data_at Tsh (Tstruct _sockaddr_in noattr) (rep_endpoint addr)
+                    addr_ptr
+        ).
 
 Definition listen_spec (T : Type) :=
   DECLARE _listen
-  WITH t : SocketMonad T, 
-       k : SocketMonad T,
+  WITH t : SocketM T, 
+       k : SocketM T,
        addr : endpoint_id,
        st : SocketMap,
        fd : sockfd,
@@ -475,8 +478,8 @@ Definition listen_spec (T : Type) :=
 
 Definition accept_spec (T : Type) :=
   DECLARE _accept
-  WITH t : SocketMonad T,
-       k : connection_id -> SocketMonad T,
+  WITH t : SocketM T,
+       k : connection_id -> SocketM T,
        server_addr : endpoint_id,
        st : SocketMap,
        fd : sockfd
@@ -518,17 +521,17 @@ Definition accept_spec (T : Type) :=
               )
         ).
 
-Definition send_msg_spec (T : Type) :=
-  DECLARE _send_msg
-  WITH t : SocketMonad T,
-       k : nat -> SocketMonad T,
+Definition send_spec (T : Type) :=
+  DECLARE _send
+  WITH t : SocketM T,
+       k : nat -> SocketM T,
        client_conn : connection_id,
        st : SocketMap,
        fd: sockfd,
        msg : string,
        buf_ptr : val,
        sh: share
-  PRE [ 1%positive OF tint, 2%positive OF (tptr tuchar),
+  PRE [ 1%positive OF tint, 2%positive OF (tptr tvoid),
         3%positive OF tuint, 4%positive OF tint]
     PROP ( consistent_world st;
            lookup_socket st fd = ConnectedSocket client_conn;
@@ -570,17 +573,17 @@ Definition send_msg_spec (T : Type) :=
                     (tarray tuchar (Zlength (val_of_string msg)))
                     (val_of_string msg) buf_ptr ).
 
-Definition recv_msg_spec (T : Type) :=
-  DECLARE _recv_msg
-  WITH t : SocketMonad T,
-       k : option string -> SocketMonad T,
+Definition recv_spec (T : Type) :=
+  DECLARE _recv
+  WITH t : SocketM T,
+       k : option string -> SocketM T,
        client_conn : connection_id,
        st : SocketMap,
        fd: sockfd,
        buf_ptr: val,
        alloc_len: Z,
        sh: share
-  PRE [ 1%positive OF tint, 2%positive OF (tptr tuchar),
+  PRE [ 1%positive OF tint, 2%positive OF (tptr tvoid),
         3%positive OF tuint, 4%positive OF tint ]
     PROP ( consistent_world st;
            lookup_socket st fd = ConnectedSocket client_conn;
@@ -700,9 +703,9 @@ Definition fd_zero_macro_spec :=
   WITH fdset : FD_Set,
        set_ptr : val,
        sh: share
-  PRE [ 1%positive OF (tptr (Tstruct _fd_set noattr)) ]
+  PRE [ _set OF (tptr (Tstruct _fd_set noattr)) ]
     PROP ( writable_share sh )
-    LOCAL ( temp 1%positive set_ptr )
+    LOCAL ( temp _set set_ptr )
     SEP ( FD_SET sh fdset set_ptr )
   POST [ Tvoid ]
     PROP ( )
@@ -715,10 +718,10 @@ Definition fd_set_macro_spec :=
        fdset : FD_Set,
        set_ptr : val,
        sh: share
-    PRE [ 1%positive OF tint, 2%positive OF (tptr (Tstruct _fd_set noattr)) ]
+    PRE [ _fd OF tint, _set OF (tptr (Tstruct _fd_set noattr)) ]
     PROP ( writable_share sh ; 0 <= descriptor fd < FD_SETSIZE )
-    LOCAL ( temp 1%positive (Vint (Int.repr (descriptor fd))) ;
-            temp 2%positive set_ptr )
+    LOCAL ( temp _fd (Vint (Int.repr (descriptor fd))) ;
+            temp _set set_ptr )
     SEP ( FD_SET sh fdset set_ptr )
   POST [ Tvoid ]
     EX fdset' : FD_Set, 
@@ -732,11 +735,11 @@ Definition fd_isset_macro_spec :=
        fdset : FD_Set,
        set_ptr : val,
        sh: share
-  PRE [ 1%positive OF tint, 2%positive OF (tptr (Tstruct _fd_set noattr)) ]
+  PRE [ _fd OF tint, _set OF (tptr (Tstruct _fd_set noattr)) ]
     PROP ( readable_share sh; 0 <= descriptor fd < FD_SETSIZE
          )
-    LOCAL ( temp 1%positive (Vint (Int.repr (descriptor fd)));
-            temp 2%positive set_ptr
+    LOCAL ( temp _fd (Vint (Int.repr (descriptor fd)));
+            temp _set set_ptr
           )
     SEP ( FD_SET sh fdset set_ptr )
   POST [ tint ]
@@ -760,7 +763,7 @@ Definition htons_spec :=
     LOCAL ( temp 1%positive (Vint (Int.repr n)) )
     SEP ( )
   POST [ tushort ]
-    PROP ( )
+    PROP ( 0 <= n <= two_p 16 - 1 (* to typecheck return value *) )
     LOCAL ( temp ret_temp (Vint (Int.repr n)) )
     SEP ( ).
   
@@ -793,8 +796,8 @@ Definition socket_specs :=
      bind_spec;
      listen_spec unit;
      accept_spec unit;
-     recv_msg_spec unit;
-     send_msg_spec unit;
+     recv_spec unit;
+     send_spec unit;
      select_spec unit;
      close_spec unit;
      shutdown_spec unit].

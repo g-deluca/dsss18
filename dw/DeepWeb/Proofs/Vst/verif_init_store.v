@@ -48,6 +48,7 @@ Proof.
     repeat rewrite field_at_data_at.
     cancel.
   }
+  { rep_omega. }
 
   replace (1024 >? 0) with true
     by (symmetry; rewrite <- Zgt_is_gt_bool; omega).

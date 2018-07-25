@@ -25,7 +25,7 @@ Proof.
   forward.
 
   assert
-    (Int.zero_ext 16 (Int.repr (Util.port_number addr)) = Int.repr (Util.port_number addr))
+    (Int.zero_ext 16 (Int.repr (port_number addr)) = Int.repr (port_number addr))
     as addr_eq.
   { rewrite zero_ext_inrange; [reflexivity |].
     rewrite Int.unsigned_repr.
@@ -37,7 +37,7 @@ Proof.
     omega.
   } 
   
-  forward_call (Util.port_number addr).
+  forward_call (port_number addr).
   { rewrite addr_eq. entailer!. }
 
   forward.
@@ -63,9 +63,11 @@ Proof.
     | [H1: bind_ret = -1, H2 : bind_ret = -1 -> _ |- _] =>
       rewrite (H2 H1)
     end.
-
     forward.
-    admit. (* Why *)
+    Exists st.
+    Exists (-1).
+    entailer!.
+
   }
 
   assert (bind_ret = 0) by omega.
@@ -80,4 +82,4 @@ Proof.
   Exists 0.
   entailer!.
 
-Admitted.
+Qed.

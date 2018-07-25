@@ -74,7 +74,8 @@ Proof.
     rewrite field_address_offset by assumption.
     simpl.
     cancel.
-  } 
+  }
+  { rep_omega. }
 
   replace (1024 >? 0) with true
     by (symmetry; rewrite <- Zgt_is_gt_bool; omega).

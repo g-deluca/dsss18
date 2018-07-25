@@ -79,7 +79,7 @@ Proof.
     unfold BUFFER_SIZE.
     autorewrite_sublist.
     reflexivity.
-  } 
+  }
   
   forward_recv fd buf_ptr
   (1024 - Zlength (val_of_string (conn_request conn))).
@@ -283,11 +283,11 @@ Proof.
                               [StructField _request_buffer] conn_ptr,
                 Zlength (val_of_string (conn_request conn ++ msg)),
                 Tsh).
-  { apply prop_right; repeat split; auto.
-    - simpl; repeat f_equal.
-      autorewrite_sublist; reflexivity.
-    - rewrite field_address_offset; [| assumption].
-      auto.
+  { entailer!.
+    autorewrite_sublist.
+    split; auto.
+    rewrite field_address_offset by assumption.
+    auto.
   }
 
   {

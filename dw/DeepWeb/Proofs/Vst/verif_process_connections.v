@@ -1,5 +1,6 @@
 Require Import String.
 
+Require Import DeepWeb.Free.Monad.Verif.
 Require Import DeepWeb.Spec.Swap_CLikeSpec.
 
 From Custom Require Import List.
@@ -69,7 +70,7 @@ Definition process_loop_prop_invar
      lookup_socket st server_fd = ListeningSocket server_addr].
 
 Definition process_loop_sep_invar
-           (k : SocketMonad unit)
+           (k : SocketM unit)
            (server_addr : endpoint_id)
            (read_set : FD_Set)
            (write_set : FD_Set)
@@ -96,7 +97,7 @@ Definition process_loop_sep_invar
               msg_store_ptr].
 
 Definition process_loop_invar
-           (k : SocketMonad unit)
+           (k : SocketM unit)
            (server_addr : endpoint_id)
            (server_fd : sockfd)
            (read_set : FD_Set)
@@ -128,7 +129,7 @@ Definition process_loop_invar
   ))).
 
 Definition process_loop_postcond
-           (k : SocketMonad unit)
+           (k : SocketM unit)
            (server_addr : endpoint_id)
            (server_fd : sockfd)
            (read_set : FD_Set)

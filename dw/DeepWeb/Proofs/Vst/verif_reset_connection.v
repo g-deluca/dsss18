@@ -51,8 +51,8 @@ Proof.
   forward_call (ptr, 0, BUFFER_SIZE).
   { subst; apply prop_right; repeat split;
       rewrite field_address_offset; simpl; auto. }
-  { unfold BUFFER_SIZE; simpl; cancel. }
-
+  { unfold BUFFER_SIZE; rep_omega. }
+  
   subst ptr.  
   remember (Z.to_nat BUFFER_SIZE) as size.
   unfold BUFFER_SIZE.
@@ -72,7 +72,7 @@ Proof.
   forward_call (ptr, 0, BUFFER_SIZE).
   { subst; apply prop_right; repeat split;
       rewrite field_address_offset; simpl; auto. }
-  { unfold BUFFER_SIZE; simpl; cancel. }
+  { unfold BUFFER_SIZE; rep_omega. }
 
   subst ptr.  
   remember (Z.to_nat BUFFER_SIZE) as size.

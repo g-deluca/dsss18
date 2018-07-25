@@ -70,6 +70,7 @@ Proof.
       repeat (rewrite field_address_offset; [| assumption]);
       split; simpl; auto.
   }
+  { rep_omega. }
 
   unfold tarray, BUFFER_SIZE in *.
 
@@ -119,7 +120,8 @@ Proof.
       repeat (rewrite field_address_offset; [| assumption]);
       split; simpl; auto.
   }
-  
+  { rep_omega. }
+
   (* Coalesce *)
   
   focus_SEP 2.

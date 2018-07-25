@@ -1,6 +1,7 @@
 Require Import String.
 
 Require Import DeepWeb.Lib.Util.
+Require Import DeepWeb.Lib.NetworkInterface.
 From DeepWeb.Spec
      Require Import Vst.MainInit Vst.SocketSpecs.
 
@@ -12,9 +13,9 @@ Definition bind_socket_spec :=
        fd : sockfd,
        addr : endpoint_id
   PRE [ _fd OF tint, _port OF tint ] 
-    PROP ( consistent_world st ; 0 <= Util.port_number addr <= two_p 16 - 1 )
+    PROP ( consistent_world st ; 0 <= port_number addr <= two_p 16 - 1 )
     LOCAL ( temp _fd (Vint (Int.repr (descriptor fd)));
-            temp _port (Vint (Int.repr (Util.port_number addr)))
+            temp _port (Vint (Int.repr (port_number addr)))
           )
     SEP ( SOCKAPI st )
   POST [ tint ]

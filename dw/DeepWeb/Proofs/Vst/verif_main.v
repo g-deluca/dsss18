@@ -3,7 +3,7 @@ Require Import String.
 Require Import DeepWeb.Spec.Swap_CLikeSpec.
 
 From DeepWeb.Spec.Vst
-     Require Import MainInit Gprog SocketSpecs MonadExports main_spec.
+     Require Import MainInit Gprog SocketSpecs MonadExports.
 
 From DeepWeb.Lib
      Require Import VstLib.
@@ -28,25 +28,12 @@ Lemma body_main:
 Proof.
   start_function.
 
-  replace_SEP
-    0
-    (ITREE server).
-  {
-    go_lower.
-    unfold ITREE.
-    Exists server.
-    entailer!.
-  }
-
-  set (st0 := {| lookup_socket := fun fd => ClosedSocket |}).
-  
-  replace_SEP
-    0
-    (SOCKAPI st0 * ITREE (server)).
-  { admit. }
-
+  remember ({| lookup_socket := _ |}) as st0.
   assert_PROP (consistent_world st0).
-  { admit. }
+  { entailer!.
+    unfold consistent_world; intros.
+    simpl in *; discriminate.
+  } 
   
   Intros.
 
@@ -162,7 +149,7 @@ Proof.
 
   rewrite listen_res_eq.
 
-  forward_call (ret tt, st_post_listen,
+  forward_call (@ret SocketM _ _ tt, st_post_listen,
                 SERVER_PORT,
                 server_fd,
                 INIT_MSG,
@@ -178,4 +165,4 @@ Proof.
     rewrite lookup_update_socket_eq; auto.
   } 
 
-Admitted.
+Qed.

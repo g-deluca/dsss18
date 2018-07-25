@@ -1,4 +1,4 @@
-(** Common effects *)
+(** More common effects (see [Effect.v] first) *)
 
 (* TODO: make handlers obviously monad morphisms *)
 
@@ -6,130 +6,22 @@ Set Implicit Arguments.
 Set Contextual Implicit.
 Generalizable All Variables.
 
-Require Import List.
-Import ListNotations.
 Require Import String.
-Require Fin.
+From Custom Require Import List.
+Import ListNotations.
 
 From QuickChick Require Show.
 
 Require Import DeepWeb.Free.Monad.Free.
+Require Import DeepWeb.Free.Monad.Internal.
+Require Export DeepWeb.Free.Monad.Effect.
 Import MonadNotations.
+Import SumNotations.
 
-Section Extensible.
-
-(** Sums for extensible event types. *)
-
-Definition sum1 (E1 E2 : Type -> Type) (X : Type) : Type :=
-  E1 X + E2 X.
-
-Inductive emptyE : Type -> Type := .
-
-Definition swap1 `(ab : sum1 A B X) : sum1 B A X :=
-  match ab with
-  | inl a => inr a
-  | inr b => inl b
-  end.
-
-Definition bimap_sum1 `(f : A X -> C Y) `(g : B X -> D Y)
-           (ab : sum1 A B X) : sum1 C D Y :=
-  match ab with
-  | inl a => inl (f a)
-  | inr b => inr (g b)
-  end.
-
-(* Automatic application of commutativity and associativity for sums.
-   TODO: This is still quite fragile and prone to
-   infinite instance resolution loops.
- *)
-
-Class Convertible (A B : Type -> Type) :=
-  { convert : forall {X}, A X -> B X }.
-
-(* Don't try to guess. *)
-Global Instance fluid_id A : Convertible A A | 0 :=
-  { convert X a := a }.
-
-(* Destructure sums. *)
-Global Instance fluid_sum `{Convertible A C} `{Convertible B C}
-  : Convertible (sum1 A B) C | 7 :=
-  { convert X ab :=
-      match ab with
-      | inl a => convert a
-      | inr b => convert b
-      end }.
-
-(* Lean left by default for no reason. *)
-Global Instance fluid_left `{Convertible A B} C
-  : Convertible A (sum1 B C) | 8 :=
-  { convert X a := inl (convert a) }.
-
-(* Very incoherent instances. *)
-Global Instance fluid_right `{Convertible A C} B
-  : Convertible A (sum1 B C) | 9 :=
-  { convert X a := inr (convert a) }.
-
-Global Instance fluid_empty A : Convertible emptyE A :=
-  { convert X v := match v with end }.
-
-End Extensible.
-
-Notation "E1 +' E2" := (sum1 E1 E2)
-(at level 50, left associativity) : type_scope.
-
-Notation "E ++' EE" := (List.fold_left sum1 EE E)
-(at level 50, left associativity) : type_scope.
-
-Notation "E -< F" := (Convertible E F)
-(at level 90, left associativity) : type_scope.
-
-Module Import SumNotations.
-
-(* Is this readable? *)
-
-Delimit Scope sum_scope with sum.
-Bind Scope sum_scope with sum1.
-
-Notation "(| x )" := (inr x) : sum_scope.
-Notation "( x |)" := (inl x) : sum_scope.
-Notation "(| x |)" := (inl (inr x)) : sum_scope.
-Notation "( x ||)" := (inl (inl x)) : sum_scope.
-Notation "(| x ||)" := (inl (inl (inr x))) : sum_scope.
-Notation "( x |||)" := (inl (inl (inl x))) : sum_scope.
-Notation "(| x |||)" := (inl (inl (inl (inr x)))) : sum_scope.
-Notation "( x ||||)" := (inl (inl (inl (inl x)))) : sum_scope.
-Notation "(| x ||||)" :=
-  (inl (inl (inl (inl (inr x))))) : sum_scope.
-Notation "( x |||||)" :=
-  (inl (inl (inl (inl (inl x))))) : sum_scope.
-Notation "(| x |||||)" :=
-  (inl (inl (inl (inl (inl (inr x)))))) : sum_scope.
-Notation "( x ||||||)" :=
-  (inl (inl (inl (inl (inl (inl x)))))) : sum_scope.
-Notation "(| x ||||||)" :=
-  (inl (inl (inl (inl (inl (inl (inr x))))))) : sum_scope.
-Notation "( x |||||||)" :=
-  (inl (inl (inl (inl (inl (inl (inl x))))))) : sum_scope.
-
-End SumNotations.
-
-Open Scope sum_scope.
-
-Definition lift {E F X} `{Convertible E F} : M E X -> M F X :=
-  hoist (@convert _ _ _).
-
-Class Embed X Y :=
-  { embed : X -> Y }.
-
-Instance Embed_fun A X Y `{Embed X Y} : Embed (A -> X) (A -> Y) :=
-  { embed := fun x a => embed (x a) }.
-
-Instance Embed_eff E F X `{Convertible E F} : Embed (E X) (M F X) :=
-  { embed := fun e => liftE (convert e) }.
-
-Arguments embed {X Y _} e.
-
-Notation "^ x" := (embed x) (at level 80).
+Export Failure.
+Export Reader.
+Export Writer.
+Export NonDeterminism.
 
 Definition run {E F X} (run_ : forall Y, F Y -> M E Y)
   : M (E +' F) X -> M E X :=
@@ -140,42 +32,54 @@ Definition run {E F X} (run_ : forall Y, F Y -> M E Y)
       end
   in hom run'.
 
-Section Failure.
+Module Type FancyNonDeterminismSig.
 
-Inductive failureE : Type -> Type :=
-| Fail : string -> failureE void.
+  (* A branching computation with [n] possible futures.
+     The constructor can be annotated with a string to help
+     debugging. *)
 
-Definition fail `{failureE -< E} {X} (reason : string)
-  : M E X :=
-  Vis (convert (Fail reason)) (fun v : void => match v with end).
+  Inductive nondetE : Type -> Type :=
+  | Or : forall (n : nat), string -> nondetE (Fin.t n).
+  (* BCP: What does the Fin.t do (why not just return nat)?  Where do
+     we use it? (Answer: It simplifies some proofs.  Let's leave it
+     and just explain what it means.) *)
 
-End Failure.
+  (* [Or] nodes can have no children ([n = 0]).  (We use only this
+     version of [fail] in the swap server development -- the one above
+     is just an example.) *)
+  Parameter fail :
+    forall {E A} `{nondetE -< E},
+      string (* reason *) -> M E A.
 
-Module Export Basic.
-Section NonDeterminism.
+  (* Disjunction between two ITrees *)
+  Parameter or :
+    forall {E A} `{nondetE -< E},
+      M E A -> M E A -> M E A.
 
-Inductive nondetE : Type -> Type :=
-| Or : nondetE bool.
+  (* Notation for disjunction between [n] ITrees, optionally annotated
+     with an explanation string. *)
+  Reserved Notation "'disj' reason ( f1 | .. | fn )"
+  (at level 0, reason at next level).
+  Reserved Notation "'disj' ( f1 | .. | fn )"
+  (at level 0).
 
-Definition or `{nondetE -< E} {X} (k1 k2 : M E X)
-  : M E X :=
-  Vis (convert Or) (fun b : bool => if b then k1 else k2).
+  (* ITree that nondeterministically chooses an element from a list
+     and returns it. *)
+  Parameter choose :
+    forall {E A} `{nondetE -< E},
+      string (* reason *) -> list A -> M E A.
 
-(* This can fail if the list is empty. *)
-Definition choose `{nondetE -< E} `{failureE -< E} {X}
-  : list X -> M E X := fix choose' xs : M E X :=
-  match xs with
-  | [] => fail "choose: No choice left"
-  | x :: xs =>
-    or (Ret x) (choose' xs)
-  end.
+  (* ITree that nondeterministically removes one element from a list
+     and returns it with the rest of the list. *)
+  Parameter pick_one :
+    forall {E A} `{nondetE -< E},
+      string -> list A -> M E (A * list A).
 
-End NonDeterminism.
-End Basic.
+  (* BCP: The un-similarity of names between [choose] and [pick-one]
+     is unfortunate!  (Rename pick_one to choose_) *)
+End FancyNonDeterminismSig.
 
-(* Another more flexible and informative variant of [nondetE]
-   (that also incorporates something like [failureE]). *)
-Module NonDeterminismBis.
+Module FancyNonDeterminism <: FancyNonDeterminismSig.
   Import List.
 
   (* Nodes can be of any arity. They are annotated with
@@ -201,7 +105,8 @@ Module NonDeterminismBis.
   (* Choose one element in a list. *)
   Definition choose {E A} `{nondetE -< E}
              (reason : string) (xs : list A) : M E A :=
-    Vis (convert (Or (length xs) reason)) (fun i => Ret (ix xs i)).
+    Vis (convert (Or (List.length xs) reason))
+        (fun i => Ret (ix xs i)).
 
   Definition noFinZ {A} (m : Fin.t O) : A := match m with end.
 
@@ -238,26 +143,8 @@ Module NonDeterminismBis.
   Definition or {E A} `{nondetE -< E} (t1 t2 : M E A) : M E A :=
     disj ( t1 | t2 ).
 
-  Definition upgrade_or {E A} `{nondetE -< E}
-             (e : Basic.nondetE A) : M E A :=
-    match e with
-    | Basic.Or => or (ret true) (ret false)
-    end.
-
   (* Remove an element from a list, also returning the remaining
      elements. *)
-
-  (* Helper for [picks]. *)
-  Fixpoint picks' {A} (xs1 xs2 : list A) : list (A * list A) :=
-    match xs2 with
-    | [] => []
-    | x2 :: xs2' =>
-      (x2, rev_append xs1 xs2') :: picks' (x2 :: xs1) xs2'
-    end.
-
-  (* List of ways to pick an element out of a list. *)
-  Definition picks {A} (xs : list A) : list (A * list A) :=
-    picks' [] xs.
 
   (* [picks] embedded in a tree. *)
   Definition pick_one {E A} `{nondetE -< E}
@@ -291,76 +178,45 @@ Module NonDeterminismBis.
     | S n, S m => Fin.FS (to_fin' m)
     end.
 
-End NonDeterminismBis.
+  Definition upgrade_or {E A} `{nondetE -< E}
+             (e : NonDeterminism.nondetE A) : M E A :=
+    match e with
+    | NonDeterminism.Or => or (ret true) (ret false)
+    end.
+End FancyNonDeterminism.
 
-Section Reader.
+Module Export State.
+Include Effect.State.
 
-Variable (R : Type).
-
-Inductive readerE : Type -> Type :=
-| Ask : readerE R.
-
-Definition ask {E} `{readerE -< E} : M E R :=
-  liftE (convert Ask).
-
-CoFixpoint run_reader {E A} (r : R) (m : M (E +' readerE) A)
-  : M E A :=
-  match m with
-  | Ret a => Ret a
-  | Vis (| e ) k =>
-    match e in readerE T return (T -> _) -> _ with
-    | Ask => fun k => Tau (run_reader r (k r))
-    end k
-  | Vis ( e |) k => Vis e (fun z => run_reader r (k z))
-  | Tau m => Tau (run_reader r m)
-  end.
-
-End Reader.
-
-Arguments ask {R E _}.
-
-Section State.
-
-Variable (S : Type).
-
-Inductive stateE : Type -> Type :=
-| Get : stateE S
-| Put : S -> stateE unit.
-
-Definition get `{stateE -< E} : M E S := embed Get.
-Definition put `{stateE -< E} : S -> M E unit := embed Put.
-
-(** TODO: Refactorable if we can generalize
-    [Free.hom] to arbitrary monads. *)
-CoFixpoint run_state' {E A} (s : S) (m : M (E +' stateE) A)
+CoFixpoint run_state' {S E A} (s : S) (m : M (E +' stateE S) A)
   : M E (S * A) :=
   match m with
   | Ret x => Ret (s, x)
   | Tau n => Tau (run_state' s n)
   | Vis (| e4 ) k =>
-    match e4 in stateE T return (T -> _) -> _ with
+    match e4 in stateE _ T return (T -> _) -> _ with
     | Get => fun k => Tau (run_state' s (k s))
     | Put s' => fun k => Tau (run_state' s' (k tt))
     end k
   | Vis ( e |) k => Vis e (fun z => run_state' s (k z))
   end.
 
-Definition run_state `{Convertible E (F +' stateE)} {A}
+Definition run_state {S} `{Convertible E (F +' stateE S)} {A}
            (s : S) (m : M E A) : M F (S * A) :=
-  run_state' s (hoist (@convert _ _ _) m : M (F +' stateE) A).
+  run_state' s (hoist (@convert _ _ _) m : M (F +' stateE S) A).
 
-Definition exec_state `{Convertible E (F +' stateE)} {A}
+Definition exec_state {S} `{Convertible E (F +' stateE S)} {A}
            (s : S) (m : M E A) : M F S :=
   mapM fst (run_state s m).
 
-Definition eval_state `{Convertible E (F +' stateE)} {A}
+Definition eval_state {S} `{Convertible E (F +' stateE S)} {A}
            (s : S) (m : M E A) : M F A :=
   mapM snd (run_state s m).
 
-End State.
-
 Arguments get {S E _}.
 Arguments put {S E _}.
+
+End State.
 
 Section Counter.
 
@@ -417,18 +273,6 @@ End Counter.
 
 Arguments run_counter_using N {_ _ _ _ _} m.
 Arguments run_counter_for {T} tag {_ _ _ _} m.
-
-Section Writer.
-
-Variable (W : Type).
-
-Inductive writerE : Type -> Type :=
-| Tell : W -> writerE unit.
-
-Definition tell `{Convertible writerE E} (w : W) : M E unit :=
-  liftE (convert (Tell w)).
-
-End Writer.
 
 Section Stop.
   (* "Return" as an effect. *)

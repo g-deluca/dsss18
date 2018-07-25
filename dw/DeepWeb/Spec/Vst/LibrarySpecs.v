@@ -12,20 +12,17 @@ Definition memset_spec :=
         2%positive OF tint,
         3%positive OF tuint
       ]
-  PROP ( ) 
-  LOCAL ( temp 1%positive ptr ;
-            temp 2%positive (Vint (Int.repr v)) ;
-            temp 3%positive (Vint (Int.repr n))
-        )
-  SEP ( if n >? 0 then data_at_ Tsh (tarray tuchar n) ptr else emp )
+    PROP ( 0 <= n <= Int.max_unsigned ) 
+    LOCAL ( temp 1%positive ptr ;
+              temp 2%positive (Vint (Int.repr v)) ;
+              temp 3%positive (Vint (Int.repr n))
+          )
+    SEP ( data_at_ Tsh (tarray tuchar n) ptr )
   POST [ tptr tvoid ]
-    EX ptr' : val,
     PROP ( )
-    LOCAL ( temp ret_temp ptr' )
-    SEP ( if n >? 0 then
-            data_at Tsh (tarray tuchar n) 
-                    (list_repeat (Z.to_nat n) (Vint (Int.repr v))) ptr
-          else emp
+    LOCAL ( temp ret_temp ptr )
+    SEP ( data_at Tsh (tarray tuchar n) 
+                  (list_repeat (Z.to_nat n) (Vint (Int.repr v))) ptr
         ).
 
 Definition memcpy_spec :=
@@ -39,14 +36,14 @@ Definition memcpy_spec :=
         2%positive OF tptr tvoid,
         3%positive OF tuint
       ]
-  PROP ( ) 
-  LOCAL ( temp 1%positive dst_ptr ;
-          temp 2%positive src_ptr;
-          temp 3%positive (Vint (Int.repr n))
+    PROP ( 0 <= n <= Int.max_unsigned ) 
+    LOCAL ( temp 1%positive dst_ptr ;
+            temp 2%positive src_ptr;
+            temp 3%positive (Vint (Int.repr n))
+          )
+    SEP ( data_at_ Tsh (tarray tuchar n) dst_ptr ;
+          data_at sh (tarray tuchar n) contents src_ptr
         )
-  SEP ( data_at_ Tsh (tarray tuchar n) dst_ptr ;
-        data_at sh (tarray tuchar n) contents src_ptr
-      )
   POST [ tptr tvoid ]
     PROP ( )
     LOCAL ( temp ret_temp dst_ptr )

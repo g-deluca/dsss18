@@ -209,13 +209,13 @@ Module Trace_Tactics.
       match t with
       | (r <- ?or_trace ;; ?k) =>
         match or_trace with
-        | Common.or ?t1 ?t2 =>
+        | or ?t1 ?t2 =>
           remember t1 as left_trace;
           assert (trace_incl (r <- t1 ;; k) t)
             as HTrace
               by (apply trace_or_incl_bind1)
         end
-      | Common.or ?t1 ?t2 =>
+      | or ?t1 ?t2 =>
         remember t1 as left_trace;
         assert (trace_incl t1 t) as HTrace
             by (apply trace_or_incl)
@@ -236,14 +236,14 @@ Module Trace_Tactics.
   (* Chooses either first or second branch of "Or" *)
   Ltac take_branch1 idx := 
     match goal with
-    | [|- context[ITREE (bind (Common.or ?branch1 ?branch2) ?k)]] =>
+    | [|- context[ITREE (bind (or ?branch1 ?branch2) ?k)]] =>
       replace_SEP idx (ITREE (r <- branch1 ;; k r));
       [go_lower; apply internal_nondet1 | ]
     end.
 
   Ltac take_branch2 idx := 
     match goal with
-    | [|- context[ITREE (bind (Common.or ?branch1 ?branch2) ?k)]] =>
+    | [|- context[ITREE (bind (or ?branch1 ?branch2) ?k)]] =>
       replace_SEP idx (ITREE (r <- branch2 ;; k r));
       [go_lower; apply internal_nondet2 | ]
     end.
