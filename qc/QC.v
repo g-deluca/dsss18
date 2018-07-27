@@ -382,7 +382,7 @@ Fixpoint genTreeSized {A} (sz : nat) (g : G A) : G (Tree A) :=
         ]
   end.
 
-(* Sample (genTreeSized 3 (choose(0,3))). *)
+Sample (genTreeSized 3 (choose(0,3))).
 (**
 
      ===> 
@@ -442,7 +442,7 @@ Fixpoint genTreeSized' {A} (sz : nat) (g : G A) : G (Tree A) :=
              ]
   end.
 
-(* Sample (genTreeSized' 3 (choose(0,3))). *)
+Sample (genTreeSized' 3 (choose(0,3))).
 (**
 
      ===> 
@@ -483,15 +483,33 @@ Fixpoint genTreeSized' {A} (sz : nat) (g : G A) : G (Tree A) :=
 (** **** Exercise: 2 stars (genListSized)  *)
 (** Write a sized generator for lists, following [genTreeSized']. *)
 
-(* FILL IN HERE *)
+Fixpoint genListSized' {A} (sz : nat) (g : G A) : G (list A) :=
+  match sz with
+    | 0 => ret nil 
+    | S sz' =>
+      freq [ (1, ret nil) ;
+               (sz, liftM2 cons g (genListSized' sz' g)) ]
+  end.
+
+Sample (genListSized' 5 (choose(0,3))).
 (** [] *)
 
 (** **** Exercise: 3 stars (genColorOption)  *)
 (** Write a custom generator for values of type [option color].  Make
     it generate [None] about 1/10th of the time, and make it generate
     [Some Red] three times as often as the other colors. *)
+Definition genColorWeight : G color :=
+  freq [ (1, ret Green)  ;
+         (1, ret Blue)   ;
+         (1, ret Yellow) ;
+         (3, ret Red)
+       ].
 
-(* FILL IN HERE *)
+Definition genColorOption : G (option color) :=
+  freq [ (1, ret None) ;
+         (9, liftM Some genColorWeight)].
+
+Sample genColorOption.
 (** [] *)
 
 (* ================================================================= *)
@@ -591,7 +609,7 @@ Instance checkableBool : Checkable bool :=
 
 End CheckerPlayground1.
 
-(* Sample (CheckerPlayground1.checker true). *)
+Sample (CheckerPlayground1.checker true).
 (**
 
      ===>
@@ -599,7 +617,7 @@ End CheckerPlayground1.
        Success, Success, Success, Success] 
 *)
 
-(* Sample (CheckerPlayground1.checker false). *)
+Sample (CheckerPlayground1.checker false).
 (**
 
      ===>
@@ -643,7 +661,7 @@ End CheckerPlayground2.
     instance for decidable properties does not look at its
     argument.) *)
 
-(*  Sample (CheckerPlayground1.checker CheckerPlayground2.c1). *)
+Sample (CheckerPlayground1.checker CheckerPlayground2.c1).
 (**
 
      ===>
@@ -651,7 +669,7 @@ End CheckerPlayground2.
        Failure, Failure, Failure, Failure] 
 *)
 
-(* Sample (CheckerPlayground1.checker CheckerPlayground2.c2). *)
+Sample (CheckerPlayground1.checker CheckerPlayground2.c2).
 (**
 
      ===>
@@ -697,7 +715,7 @@ Definition isRed c :=
     [Checkable] instance for [bool], we can apply [forAll] to [isRed]
     and sample from the resulting [Checker] to run some tests. *)
 
-(* Sample (CheckerPlayground3.forAll genColor isRed). *)
+Sample (CheckerPlayground3.forAll genColor isRed).
 (**
 
      ===>
@@ -711,11 +729,9 @@ Definition isRed c :=
 
 (** Now, what about [mirrorP]? *)
 
-(*
 Sample (CheckerPlayground3.forAll
           (genTreeSized' 3 (choose(0,3)))
           mirrorP).
-*)
 (**
 
      ===>
@@ -731,11 +747,9 @@ Sample (CheckerPlayground3.forAll
 
 Definition faultyMirrorP (t : Tree nat) := (mirror t) = t ?.
 
-(*
 Sample (CheckerPlayground3.forAll
           (genTreeSized' 3 (choose(0,3)))
           faultyMirrorP).
-*)
 (**
 
      ===>
@@ -814,11 +828,9 @@ Definition forAll {A B : Type} `{Show A} `{Checkable B}
 
 End CheckerPlayground4.
 
-(*
 Sample (CheckerPlayground4.forAll
           (genTreeSized' 3 (choose(0,3)))
           faultyMirrorP).
-*)
 (**
 
      ===>
@@ -845,12 +857,10 @@ Sample (CheckerPlayground4.forAll
     tests and returning their results in a list, it runs tests only
     until the first counterexample is found. *)
 
-(*
 QuickChick
   (forAll
      (genTreeSized' 3 (choose(0,3)))
      faultyMirrorP).
-*)
 (**
 
      ===>
@@ -975,13 +985,11 @@ Instance shrinkTree {A} `{Shrink A} : Shrink (Tree A) :=
     combinator, a variant of [forAll] that takes a shrinker as an
     additional argument, to test properties like [faultyMirrorP]. *)
 
-(*
   QuickChick 
        (forAllShrink 
           (genTreeSized' 5 (choose (0,5))) 
           shrink
           faultyMirrorP). 
-*)
 (**
 
      ===> 
@@ -1015,28 +1023,67 @@ Arguments TNode {A} _ _ _ _.
 Fixpoint tern_mirror {A : Type} (t : TernaryTree A) : TernaryTree A :=
   match t with
     | TLeaf => TLeaf
-    | TNode x l m r => TNode x (tern_mirror r) m (tern_mirror l)
+    | TNode x l m r => TNode x (tern_mirror r) (tern_mirror m) (tern_mirror l)
   end.
 
 (** **** Exercise: 1 star (show_tern_tree)  *)
 (** Write a [Show] instance for Ternary Trees. *)
-
-(* FILL IN HERE *)
+Open Scope string.
+Instance showTernaryTree {A} `{_ : Show A} : Show (TernaryTree A) :=
+  {| show := let fix aux t :=
+       match t with
+         | TLeaf => "Leaf"
+         | TNode x l m r =>
+             "Node (" ++ show x ++ ") (" 
+                      ++ aux l ++ ") (" 
+                      ++ aux m ++ ") (" 
+                      ++ aux r ++ ")"
+       end
+     in aux
+  |}.
 (** [] *)
 
 (** **** Exercise: 2 stars (gen_tern_tree)  *)
 (** Write a generator for ternary trees. *)
-
-(* FILL IN HERE *)
+Fixpoint genTernTreeSized {A : Type} (sz : nat) (g : G A)
+  : G (TernaryTree A) :=
+  match sz with
+  | 0 => ret TLeaf
+  | S sz' =>
+    freq [(1, ret TLeaf) ;
+          (sz, a <- g ;;
+               l <- genTernTreeSized sz' g ;;
+               m <- genTernTreeSized sz' g ;; 
+               r <- genTernTreeSized sz' g ;;
+               ret (TNode a l m r)
+           )]
+   end.
 
 (** The following line should generate a bunch of nat ternary trees. *)
-(* Sample (@genTernTreeSized nat 3 (choose (0,10))). *)
+Sample (@genTernTreeSized nat 3 (choose (0,10))).
 (** [] *)
 
 (** **** Exercise: 2 stars (shrink_tern_tree)  *)
 (** Write a shrinker for ternary trees. *)
+Fixpoint shrinkTernTreeAux {A} (s : A -> list A) (t : TernaryTree A)
+  : list (TernaryTree A) :=
+  match t with
+  | TLeaf => []
+  | TNode x l m r =>
+      ([l] ++
+       [m] ++
+       [r] ++
+       map (fun x' : A => TNode x' l m r) (s x) ++
+       map (fun l' : TernaryTree A => TNode x l' m r)
+                                   (shrinkTernTreeAux s l) ++
+       map (fun m' : TernaryTree A => TNode x l m' r)
+                                   (shrinkTernTreeAux s m) ++
+       map (fun r' : TernaryTree A => TNode x l m r')
+                                   (shrinkTernTreeAux s r))%list
+  end.
 
-(* FILL IN HERE *)
+Instance shrinkTernTree {A} `{Shrink A} : Shrink (TernaryTree A) :=
+  {| shrink x := shrinkTernTreeAux shrink x |}.
 (** [] *)
 
 
@@ -1092,7 +1139,7 @@ Proof. dec_eq. Defined.
     mirror of the path in the mirror of the tree, just with a mirrored
     tree result. *)
 
-Definition tern_mirror_path_flip (t:TernaryTree nat) (p:path) :=
+Definition tern_mirror_path_flip (p:path) (t:TernaryTree nat) :=
   (  traverse_path p t 
    = tern_mirror (traverse_path (path_mirror p) (tern_mirror t))) ?.
 
@@ -1136,7 +1183,12 @@ Instance shrinkPath : Shrink path := shrinkList.
 (** Using [genTernTreeSized] and [shrinkTernTree] find (and fix!) any
     bugs in [tern_mirror]. *)
 
-(* FILL IN HERE *)
+QuickChick 
+  ( p <- genPath ;;
+    forAllShrink
+        (genTernTreeSized 5 (choose (0,5))) 
+        shrink
+        (tern_mirror_path_flip p)).
 (** [] *)
 
 (* ################################################################# *)
@@ -1268,15 +1320,17 @@ Instance genTree {A} `{Gen A} : GenSized (Tree A) :=
 (** Finally, with the [Arbitrary] instance for trees, we can supply
     just [faultyMirrorP] to the [QuickChick] command. *)
 
-(* QuickChick faultyMirrorP. *)
+QuickChick faultyMirrorP.
 
 (** **** Exercise: 2 stars (tern_tree_typeclasses)  *)
 (** Add typeclass instances for [GenSized] and [Shrink] so that you
     can [QuickChick tern_mirror_reverse] directly. *)
 
-(* FILL IN HERE *)
+Instance genTernTree {A} `{Gen A} : GenSized (TernaryTree A) :=
+  {| arbitrarySized n := genTernTreeSized n arbitrary |}.
 
-(* QuickChick tern_mirror_reverse. *)
+
+(* Quickchick tern_mirror_reverse. *)
 (** [] *)
 
 (* ################################################################# *)
@@ -1348,7 +1402,7 @@ Fixpoint size {A} (t : Tree A) : nat :=
 Definition treeProp (g : nat -> G nat -> G (Tree nat)) n :=
   forAll (g n (choose (0,n))) (fun t => collect (size t) true).
 
-(* QuickChick (treeProp genTreeSized 5). *)
+QuickChick (treeProp genTreeSized 5).
 (**
 
      ===> 
@@ -1385,7 +1439,7 @@ Definition treeProp (g : nat -> G nat -> G (Tree nat)) n :=
 
 (** Compare this with [genTreeSized'].  *)
 
-(* QuickChick (treeProp genTreeSized' 5). *)
+QuickChick (treeProp genTreeSized' 5). 
 (**
 
      ===> 
@@ -1459,7 +1513,7 @@ Fixpoint insert (x : nat) (l : list nat) :=
 Definition insert_spec (x : nat) (l : list nat) :=
   sorted l ==> sorted (insert x l).
 
-(* QuickChick insert_spec. *)
+QuickChick insert_spec.
 (**
 
      ===> 
@@ -1483,7 +1537,7 @@ Definition insert_spec (x : nat) (l : list nat) :=
 Definition insert_spec' (x : nat) (l : list nat) :=
   collect (List.length l) (insert_spec x l).
 
-(* QuickChick insert_spec'. *)
+QuickChick insert_spec'.
 (**
 
      ===> 
@@ -1534,7 +1588,7 @@ Fixpoint genSortedList (low high : nat) (size : nat)
     choose to generate a cons cell, with its head generated between
     [low] and [high] and its tail generated recursively. *)
 
-(* Sample (genSortedList 0 10 10). *)
+Sample (genSortedList 0 10 10).
 
 (** Finally, we can use [forAllShrink] to define a property using the
     new generator: *)
@@ -1600,8 +1654,9 @@ Fixpoint isBST (low high: nat) (t : Tree nat) :=
 Fixpoint insertBST (x : nat) (t : Tree nat) :=
   match t with 
   | Leaf => Node x Leaf Leaf
-  | Node x' l r => if x <? x' then Node x' (insertBST x l) r
-                   else Node x' l (insertBST x r)
+  | Node x' l r => if x =? x' then t
+                   else if x <? x' then Node x' (insertBST x l) r
+                        else Node x' l (insertBST x r)
   end.
 
 (** We would expect that if we insert an element that is within 
@@ -1614,7 +1669,7 @@ Definition insertBST_spec (low high : nat) (x : nat) (t : Tree nat) :=
   (isBST low high t) ==> 
   isBST low high (insertBST x t).                         
 
-(* QuickChick insertBST_spec. *)
+QuickChick insertBST_spec.
 (** 
 
     ===> 
@@ -1647,7 +1702,7 @@ Definition insertBST_spec' (low high : nat) (x : nat) (t : Tree nat) :=
 
 (** ... and try again... *)
 
-(* QuickChick insertBST_spec'. *)
+QuickChick insertBST_spec'.
 (**
 
      ===> 
@@ -1661,5 +1716,31 @@ Definition insertBST_spec' (low high : nat) (x : nat) (t : Tree nat) :=
 (** Write a generator that produces binary search trees directly, so
     that you run 10000 tests with 0 discards. *)
 
-(* FILL IN HERE *)
+Fixpoint gen_bst (low high : nat) (size : nat) : G (Tree nat) :=
+  match size with
+  | 0 => ret Leaf
+  | S size' => 
+    if orb (high <=? low) (high - low <? 2) then
+      ret Leaf
+    else
+      freq [ (1, ret Leaf) ;
+             (size, x <- choose (low+1, high-1);;
+                    l <- gen_bst low x size' ;;
+                    r <- gen_bst x high size' ;;
+                    ret (Node x l r)) ]
+  end.
+
+Definition gen_bst_correct (low high size : nat) :=
+  liftM (isBST low high) (gen_bst low high size).
+
+QuickChick gen_bst_correct.
+
+Definition insertBST_spec_sorted (low high sz : nat) :=
+  forAllShrink 
+    (gen_bst low high sz) 
+    shrink 
+    (fun t => x <- choose (low+1, high-1) ;;
+           insertBST_spec' low high x t).
+
+QuickChick (insertBST_spec_sorted 0 5).
 (** [] *)
